@@ -1,25 +1,20 @@
 // server.js - Финальный рабочий скрипт
-
-// 1. Импорт необходимых модулей
 const express = require('express');
 const mongoose = require('mongoose');
 const http = require('http');
 const socketio = require('socket.io');
-const path = require('path'); // Модуль для работы с путями к файлам
+const path = require('path');
 
-// 2. Инициализация Express и Socket.io
 const app = express();
 const server = http.createServer(app);
 const io = socketio(server);
 
-// 3. Конфигурация базы данных
-// Используем переменную окружения MONGO_URI, заданную на Render
+// --- Переменные окружения Render ---
+// Render требует использовать порт, который он предоставляет
+const PORT = process.env.PORT || 10000; 
 const DB_URI = process.env.MONGO_URI; 
 
-// Установите порт, который предоставит Render (или 10000, как вы указали в логах)
-const PORT = process.env.PORT || 10000; 
-
-// 4. Определение модели MongoDB (если это чат, нам нужна модель сообщения)
+// 1. Определение модели MongoDB
 const MessageSchema = new mongoose.Schema({
     sender: String,
     content: String,
@@ -28,60 +23,52 @@ const MessageSchema = new mongoose.Schema({
 const Message = mongoose.model('Message', MessageSchema);
 
 
-// --- КЛЮЧЕВОЙ МОМЕНТ: Обслуживание статических файлов и корневого маршрута ---
-// Указываем Express, что папка 'public' содержит статический контент (HTML, CSS, JS)
+// 2. Обслуживание статических файлов (HTML, CSS, JS)
+// Это исправляет ошибку "Cannot GET /"
 app.use(express.static(path.join(__dirname, 'public')));
-
-// Обработка корневого маршрута (/) для отправки index.html
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
-// ----------------------------------------------------------------------------
 
 
-// 5. Подключение к MongoDB
-mongoose.connect(DB_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true
-})
+// 3. Подключение к MongoDB
+mongoose.connect(DB_URI)
 .then(() => console.log('✅ MongoDB Connected!'))
 .catch(err => {
+    // Эта ошибка должна была исчезнуть после исправления MONGO_URI
     console.error('❌ MongoDB Connection Error:', err);
-    // Выход из процесса при ошибке подключения к БД
-    // process.exit(1); 
 });
 
-// 6. Обработка соединений Socket.io
+
+// 4. Логика Socket.io для чата
 io.on('connection', (socket) => {
     console.log('Новый пользователь подключился.');
 
-    // Отправка последних 50 сообщений новому пользователю
+    // Отправка последних сообщений при подключении
     Message.find().sort({ timestamp: -1 }).limit(50).then(messages => {
         socket.emit('load messages', messages.reverse());
     });
 
-    // Получение нового сообщения от клиента
+    // Обработка нового сообщения
     socket.on('chat message', (msg) => {
-        // Создание нового сообщения в БД
         const newMessage = new Message({
             sender: msg.sender || 'Anonymous', 
             content: msg.content
         });
 
         newMessage.save().then(() => {
-            // Отправка сообщения всем подключенным клиентам
+            // Отправка сообщения всем клиентам
             io.emit('chat message', newMessage); 
         });
     });
 
-    // Обработка отключения
     socket.on('disconnect', () => {
         console.log('Пользователь отключился.');
     });
 });
 
 
-// 7. Запуск сервера
+// 5. Запуск сервера на порту Render
 server.listen(PORT, () => {
     console.log(`Сервер запущен на порту ${PORT}`);
 });
