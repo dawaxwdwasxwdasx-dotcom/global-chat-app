@@ -1,34 +1,44 @@
-// server.js - Упрощенный финальный скрипт
 const express = require('express');
-const mongoose = require('mongoose');
-const path = require('path');
 const http = require('http');
+const socketIo = require('socket.io');
+const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
+const io = socketIo(server);
 
-// Настройки порта и базы данных
-const PORT = process.env.PORT || 10000; 
-const DB_URI = process.env.MONGO_URI; 
-
-// --- Обслуживание статических файлов (Для отображения чата) ---
+// Middleware
+app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Basic routes
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-// -------------------------------------------------------------
-
-// Подключение к MongoDB
-mongoose.connect(DB_URI)
-.then(() => console.log('✅ MongoDB Connected Successfully!'))
-.catch(err => {
-    console.error('❌ MongoDB Connection Error:', err);
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Здесь должна быть логика Socket.io для чата (вы добавите ее позже)
+app.get('/health', (req, res) => {
+  res.json({ status: 'OK', message: 'Messenger server is running!' });
+});
 
-// Запуск сервера
+// Socket.io для реального времени
+io.on('connection', (socket) => {
+  console.log('User connected:', socket.id);
+  
+  socket.on('send-message', (data) => {
+    io.emit('receive-message', {
+      id: Date.now(),
+      user: data.user,
+      text: data.text,
+      timestamp: new Date().toISOString()
+    });
+  });
+  
+  socket.on('disconnect', () => {
+    console.log('User disconnected:', socket.id);
+  });
+});
+
+const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-    console.log(`Сервер запущен на порту ${PORT}`);
+  console.log(`Messenger server running on port ${PORT}`);
 });

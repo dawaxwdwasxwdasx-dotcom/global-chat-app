@@ -5,52 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Global Messenger</title>
     <style>
-        body { 
-            font-family: Arial, sans-serif; 
-            margin: 0; 
-            padding: 20px; 
-            background: #f0f0f0;
-        }
-        .chat-container {
-            max-width: 800px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 10px;
-            padding: 20px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        #messages { 
-            height: 400px; 
-            border: 1px solid #ddd; 
-            padding: 10px; 
-            margin-bottom: 10px; 
-            overflow-y: auto;
-            border-radius: 5px;
-        }
-        .message { 
-            margin-bottom: 10px; 
-            padding: 8px; 
-            background: #e9ecef; 
-            border-radius: 5px;
-        }
-        .message .user { 
-            font-weight: bold; 
-            color: #007bff;
-        }
-        input, button { 
-            padding: 10px; 
-            margin: 5px 0; 
-            border: 1px solid #ddd;
-            border-radius: 5px;
-        }
-        button { 
-            background: #007bff; 
-            color: white; 
-            cursor: pointer;
-        }
-        button:hover {
-            background: #0056b3;
-        }
+        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: #f0f0f0; }
+        .chat-container { max-width: 800px; margin: 0 auto; background: white; border-radius: 10px; padding: 20px; }
+        #messages { height: 400px; border: 1px solid #ddd; padding: 10px; margin-bottom: 10px; overflow-y: auto; }
+        .message { margin-bottom: 10px; padding: 8px; background: #e9ecef; border-radius: 5px; }
+        .message .user { font-weight: bold; color: #007bff; }
+        input, button { padding: 10px; margin: 5px 0; border: 1px solid #ddd; border-radius: 5px; width: 100%; }
+        button { background: #007bff; color: white; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -65,44 +26,30 @@
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
-        
-        // Элементы DOM
         const messagesDiv = document.getElementById('messages');
         const messageInput = document.getElementById('messageInput');
         const usernameInput = document.getElementById('usernameInput');
         
-        // Получаем сообщения от сервера
         socket.on('receive-message', (data) => {
             const messageElement = document.createElement('div');
             messageElement.className = 'message';
-            messageElement.innerHTML = `
-                <span class="user">${data.user}:</span> 
-                <span class="text">${data.text}</span>
-                <small>${new Date(data.timestamp).toLocaleTimeString()}</small>
-            `;
+            messageElement.innerHTML = `<span class="user">${data.user}:</span> ${data.text}`;
             messagesDiv.appendChild(messageElement);
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
         });
         
-        // Отправка сообщения
         function sendMessage() {
             const username = usernameInput.value.trim() || 'Аноним';
             const text = messageInput.value.trim();
-            
             if (text) {
                 socket.emit('send-message', { user: username, text: text });
                 messageInput.value = '';
             }
         }
         
-        // Отправка по Enter
         messageInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                sendMessage();
-            }
+            if (e.key === 'Enter') sendMessage();
         });
-        
-        // Фокус на поле ввода сообщения
         messageInput.focus();
     </script>
 </body>
